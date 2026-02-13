@@ -100,43 +100,57 @@ export default function InvoiceGenerator() {
     await new Promise(resolve => setTimeout(resolve, 300));
 
     const element = invoiceRef.current;
-    
-    // Get actual dimensions
-    const originalWidth = element.offsetWidth;
+    const margin = 15; // mm
+    const captureWidth = 595; // A4 at 72dpi for consistent rendering
+
+    // Temporarily set fixed width for consistent PDF output
+    const origWidth = element.style.width;
+    const origMaxWidth = element.style.maxWidth;
+    const origMinWidth = element.style.minWidth;
+    element.style.width = `${captureWidth}px`;
+    element.style.maxWidth = `${captureWidth}px`;
+    element.style.minWidth = `${captureWidth}px`;
+
+    await new Promise(resolve => setTimeout(resolve, 100)); // Allow reflow
+
     const scrollHeight = element.scrollHeight;
-    
+
     const canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
       backgroundColor: '#ffffff',
       logging: false,
-      width: originalWidth,
+      width: captureWidth,
       height: scrollHeight,
-      windowWidth: originalWidth,
+      windowWidth: captureWidth,
       windowHeight: scrollHeight,
       scrollY: -window.scrollY,
       scrollX: -window.scrollX
     });
 
+    // Restore original styles
+    element.style.width = origWidth;
+    element.style.maxWidth = origMaxWidth;
+    element.style.minWidth = origMinWidth;
+
     const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const pdfWidth = 210;
-    const pdfHeight = 297;
-    
-    let imgWidth = pdfWidth;
+    const contentWidth = 210 - 2 * margin;  // 180mm
+    const contentHeight = 297 - 2 * margin; // 267mm
+
+    let imgWidth = contentWidth;
     let imgHeight = (canvas.height * imgWidth) / canvas.width;
-    
-    // Scale down if content is taller than page
-    if (imgHeight > pdfHeight) {
-      imgHeight = pdfHeight;
+
+    if (imgHeight > contentHeight) {
+      imgHeight = contentHeight;
       imgWidth = (canvas.width * imgHeight) / canvas.height;
     }
-    
-    // Center on page
-    const xOffset = (pdfWidth - imgWidth) / 2;
-    const yOffset = (pdfHeight - imgHeight) / 2;
 
-    pdf.addImage(imgData, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
+    // Use page height that fits content when short (reduce extra space)
+    const neededHeight = imgHeight + 2 * margin;
+    const pageHeight = Math.min(297, neededHeight);
+    const pdf = new jsPDF('p', 'mm', [210, pageHeight]);
+
+    pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
     pdf.save(`Invoice_${selectedDate}.pdf`);
 
     setIsExporting(false);
@@ -208,8 +222,8 @@ export default function InvoiceGenerator() {
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50">
-                        <TableHead className="font-semibold text-slate-700">Vehicle 車輛</TableHead>
                         <TableHead className="font-semibold text-slate-700">Type 類型</TableHead>
+                        <TableHead className="font-semibold text-slate-700">Vehicle 車輛</TableHead>
                         <TableHead className="font-semibold text-slate-700 text-right">Quantity (L) 數量（升）</TableHead>
                         {!isExporting && (
                           <TableHead className="font-semibold text-slate-700 text-right w-24">Actions 操作</TableHead>
@@ -219,12 +233,12 @@ export default function InvoiceGenerator() {
                     <TableBody>
                       {surveys.map((survey, idx) => (
                         <TableRow key={survey.id ?? idx} className="hover:bg-slate-50/50">
-                          <TableCell className="font-medium text-slate-900">{survey.vehicle}</TableCell>
                           <TableCell>
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                               {survey.type}
                             </span>
                           </TableCell>
+                          <TableCell className="font-medium text-slate-900">{survey.vehicle}</TableCell>
                           <TableCell className="text-right font-mono">{survey.quantity?.toFixed(2)}</TableCell>
                           {!isExporting && (
                             <TableCell className="text-right">
