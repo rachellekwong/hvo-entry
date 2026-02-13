@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Fuel, Truck, Droplets, Check, Loader2 } from "lucide-react";
+import { Calendar, Fuel, Truck, Droplets, User, Check, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { googleSheets } from "@/api/googleSheetsClient";
 import { toast } from "sonner";
@@ -33,6 +33,7 @@ export default function SurveyForm() {
     type: 'HVO',
     vehicle: '',
     quantity: '',
+    receivedBy: '',
     signature: null
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,7 +42,7 @@ export default function SurveyForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.vehicle || !formData.quantity || !formData.signature) {
+    if (!formData.vehicle || !formData.quantity || !formData.receivedBy || !formData.signature) {
       toast.error('Please fill in all fields and provide a signature');
       return;
     }
@@ -54,6 +55,7 @@ export default function SurveyForm() {
         type: formData.type,
         vehicle: formData.vehicle,
         quantity: parseFloat(formData.quantity),
+        receivedBy: formData.receivedBy,
         signature: formData.signature
       });
     } catch (err) {
@@ -71,6 +73,7 @@ export default function SurveyForm() {
       type: 'HVO',
       vehicle: '',
       quantity: '',
+      receivedBy: '',
       signature: null
     });
     
@@ -157,6 +160,21 @@ export default function SurveyForm() {
                 value={formData.quantity}
                 onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                 placeholder="Enter quantity"
+                className="h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
+              />
+            </div>
+
+            {/* Received By Field */}
+            <div className="space-y-2">
+              <Label className="text-slate-700 font-medium flex items-center gap-2">
+                <User className="w-4 h-4 text-slate-400" />
+                Received By 接收人
+              </Label>
+              <Input
+                type="text"
+                value={formData.receivedBy}
+                onChange={(e) => setFormData({ ...formData, receivedBy: e.target.value })}
+                placeholder="Enter receiver name"
                 className="h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
               />
             </div>

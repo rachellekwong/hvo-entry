@@ -20,7 +20,7 @@ export default function Layout({ children, currentPageName }) {
               <img 
                 src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698d530486a5af9808992ca1/e6be25309_wahfupic.jpg" 
                 alt="Logo" 
-                className="w-9 h-9 object-contain"
+                className="max-w-8 max-h-8 w-auto h-auto object-contain"
               />
               <span className="font-semibold text-slate-900 hidden sm:block">HVO Logger 油品記錄器</span>
             </div>

@@ -109,9 +109,11 @@ export default function InvoiceGenerator() {
         <Card className="border-0 shadow-xl shadow-slate-200/50 overflow-hidden">
           <CardHeader className="bg-gradient-to-br from-slate-800 to-slate-900 text-white">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-white/10 rounded-xl backdrop-blur-sm">
-                <FileText className="w-6 h-6" />
-              </div>
+              <img
+                src="https://qtrypzzcjebvfcihiynt.supabase.co/storage/v1/object/public/base44-prod/public/698d530486a5af9808992ca1/e6be25309_wahfupic.jpg"
+                alt="Logo"
+                className="max-w-12 max-h-12 w-auto h-auto object-contain"
+              />
               <div>
                 <CardTitle className="text-xl font-semibold">
                   Invoice 發票 for {format(new Date(selectedDate), 'MMMM d, yyyy')}
