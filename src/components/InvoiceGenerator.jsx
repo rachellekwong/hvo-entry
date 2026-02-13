@@ -4,19 +4,46 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar, FileText, Download, Loader2, AlertCircle } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar, FileText, Download, Loader2, AlertCircle, Pencil, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { googleSheets } from "@/api/googleSheetsClient";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import SignaturePad from "./SignaturePad";
+import { toast } from "sonner";
+
+const VEHICLES = [
+  "CCB-06", "CCB-07", "CCB-08", "CCB-10", "CCB-12", "CCB-13", "CCB-15", "CCB-16",
+  "VAN-111", "VAN-139", "STB-18", "STB-23", "STB-25", "STB-28",
+];
 
 export default function InvoiceGenerator() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [confirmationSignature, setConfirmationSignature] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [editSurvey, setEditSurvey] = useState(null);
+  const [deleteSurveyId, setDeleteSurveyId] = useState(null);
   const invoiceRef = useRef(null);
+  const queryClient = useQueryClient();
 
   const { data: surveys = [], isLoading, error } = useQuery({
     queryKey: ['surveys', selectedDate],
@@ -27,7 +54,40 @@ export default function InvoiceGenerator() {
     enabled: !!selectedDate
   });
 
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }) => googleSheets.updateSurvey(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['surveys', selectedDate] });
+      setEditSurvey(null);
+      toast.success('Entry updated successfully');
+    },
+    onError: () => toast.error('Failed to update entry. Please try again.'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => googleSheets.deleteSurvey(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['surveys', selectedDate] });
+      setDeleteSurveyId(null);
+      toast.success('Entry deleted successfully');
+    },
+    onError: () => toast.error('Failed to delete entry. Please try again.'),
+  });
+
   const totalQuantity = surveys.reduce((sum, s) => sum + (s.quantity || 0), 0);
+
+  const handleEditSave = () => {
+    if (!editSurvey) return;
+    const { id, vehicle, type, quantity } = editSurvey;
+    if (!vehicle || !type || !quantity) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+    updateMutation.mutate({
+      id,
+      data: { vehicle, type, quantity: parseFloat(quantity) },
+    });
+  };
 
   const exportToPDF = async () => {
     if (!confirmationSignature) {
@@ -151,11 +211,14 @@ export default function InvoiceGenerator() {
                         <TableHead className="font-semibold text-slate-700">Vehicle 車輛</TableHead>
                         <TableHead className="font-semibold text-slate-700">Type 類型</TableHead>
                         <TableHead className="font-semibold text-slate-700 text-right">Quantity (L) 數量（升）</TableHead>
+                        {!isExporting && (
+                          <TableHead className="font-semibold text-slate-700 text-right w-24">Actions 操作</TableHead>
+                        )}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {surveys.map((survey, idx) => (
-                        <TableRow key={survey.id || idx} className="hover:bg-slate-50/50">
+                        <TableRow key={survey.id ?? idx} className="hover:bg-slate-50/50">
                           <TableCell className="font-medium text-slate-900">{survey.vehicle}</TableCell>
                           <TableCell>
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -163,6 +226,37 @@ export default function InvoiceGenerator() {
                             </span>
                           </TableCell>
                           <TableCell className="text-right font-mono">{survey.quantity?.toFixed(2)}</TableCell>
+                          {!isExporting && (
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 w-8 p-0"
+                                  onClick={() => setEditSurvey({
+                                    id: survey.rowIndex ?? survey.id ?? idx,
+                                    vehicle: survey.vehicle,
+                                    type: survey.type || 'HVO',
+                                    quantity: String(survey.quantity ?? ''),
+                                  })}
+                                  disabled={updateMutation.isPending}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  onClick={() => setDeleteSurveyId(survey.rowIndex ?? survey.id ?? idx)}
+                                  disabled={deleteMutation.isPending}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))}
                     </TableBody>
@@ -208,6 +302,92 @@ export default function InvoiceGenerator() {
           )}
         </Button>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editSurvey} onOpenChange={(open) => !open && setEditSurvey(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Entry 編輯記錄</DialogTitle>
+          </DialogHeader>
+          {editSurvey && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-vehicle">Vehicle 車輛</Label>
+                <Select
+                  value={editSurvey.vehicle}
+                  onValueChange={(v) => setEditSurvey((s) => ({ ...s, vehicle: v }))}
+                >
+                  <SelectTrigger id="edit-vehicle">
+                    <SelectValue placeholder="Select vehicle" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {VEHICLES.map((v) => (
+                      <SelectItem key={v} value={v}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-type">Type 類型</Label>
+                <Select
+                  value={editSurvey.type}
+                  onValueChange={(v) => setEditSurvey((s) => ({ ...s, type: v }))}
+                >
+                  <SelectTrigger id="edit-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="HVO">HVO</SelectItem>
+                    <SelectItem value="Diesel">Diesel</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-quantity">Quantity (L) 數量（升）</Label>
+                <Input
+                  id="edit-quantity"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editSurvey.quantity}
+                  onChange={(e) => setEditSurvey((s) => ({ ...s, quantity: e.target.value }))}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditSurvey(null)}>
+              Cancel 取消
+            </Button>
+            <Button onClick={handleEditSave} disabled={updateMutation.isPending}>
+              {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save 保存'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteSurveyId} onOpenChange={(open) => !open && setDeleteSurveyId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Entry 刪除記錄</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this entry? This action cannot be undone.
+              確定要刪除此記錄嗎？此操作無法撤銷。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel 取消</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => deleteSurveyId != null && deleteMutation.mutate(deleteSurveyId)}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Delete 刪除'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

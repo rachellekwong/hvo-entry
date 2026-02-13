@@ -53,4 +53,19 @@ export const googleSheets = {
     console.log('[Google Sheets] listSurveysByDate result:', result);
     return result;
   },
+  updateSurvey: async (id, data) => {
+    const result = await request({
+      action: "updateSurvey",
+      id,
+      data,
+    });
+    return result;
+  },
+  deleteSurvey: async (id) => {
+    const result = await request({
+      action: "deleteSurvey",
+      id,
+    });
+    return result;
+  },
 };
