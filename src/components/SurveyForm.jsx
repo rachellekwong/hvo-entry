@@ -11,11 +11,20 @@ import { toast } from "sonner";
 import SignaturePad from "./SignaturePad";
 
 const VEHICLES = [
-  "Vehicle1",
-  "Vehicle2",
-  "Vehicle3",
-  "Vehicle4",
-  "Vehicle5"
+  "CCB-06",
+  "CCB-07",
+  "CCB-08",
+  "CCB-10",
+  "CCB-12",
+  "CCB-13",
+  "CCB-15",
+  "CCB-16",
+  "VAN-111",
+  "VAN-139",
+  "STB-18",
+  "STB-23",
+  "STB-25",
+  "STB-28",
 ];
 
 export default function SurveyForm() {
