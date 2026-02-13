@@ -145,12 +145,12 @@ export default function InvoiceGenerator() {
               <div className="space-y-6">
                 {/* Data Table */}
                 <div className="rounded-xl border border-slate-200 overflow-hidden">
-                  <Table className="min-w-max">
+                  <Table>
                     <TableHeader>
                       <TableRow className="bg-slate-50">
-                        <TableHead className="font-semibold text-slate-700 whitespace-nowrap">Vehicle 車輛</TableHead>
-                        <TableHead className="font-semibold text-slate-700 whitespace-nowrap">Type 類型</TableHead>
-                        <TableHead className="font-semibold text-slate-700 text-right whitespace-nowrap">Quantity (L) 數量（升）</TableHead>
+                        <TableHead className="font-semibold text-slate-700">Vehicle 車輛</TableHead>
+                        <TableHead className="font-semibold text-slate-700">Type 類型</TableHead>
+                        <TableHead className="font-semibold text-slate-700 text-right">Quantity (L) 數量（升）</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -171,9 +171,9 @@ export default function InvoiceGenerator() {
 
                 {/* Total */}
                 <div className="flex justify-end">
-                  <div className="bg-slate-900 text-white rounded-xl px-4 py-3 sm:px-6 sm:py-4 inline-flex items-center gap-3 sm:gap-4 whitespace-nowrap shrink-0">
-                    <span className="text-slate-300 text-sm sm:text-base whitespace-nowrap">Total Quantity 總數量:</span>
-                    <span className="text-xl sm:text-2xl font-bold whitespace-nowrap">{totalQuantity.toFixed(2)}\u00A0L</span>
+                  <div className="bg-slate-900 text-white rounded-xl px-6 py-4 inline-flex items-center gap-4">
+                    <span className="text-slate-300">Total Quantity 總數量:</span>
+                    <span className="text-2xl font-bold">{totalQuantity.toFixed(2)} L</span>
                   </div>
                 </div>
 
