@@ -6,7 +6,7 @@ import { Fuel, FileText } from 'lucide-react';
 export default function Layout({ children, currentPageName }) {
   const navItems = [
     { name: 'EnterSurvey', label: 'Fuel Entry 輸入', icon: Fuel },
-    { name: 'GenerateInvoice', label: 'Generate Invoice 發票', icon: FileText }
+    { name: 'GenerateInvoice', label: 'Generate Invoice 日結單', icon: FileText }
   ];
 
   return (

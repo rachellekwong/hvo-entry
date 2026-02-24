@@ -165,7 +165,7 @@ export default function InvoiceGenerator() {
             <div className="flex-1 space-y-2">
               <Label className="text-slate-700 font-medium flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-slate-400" />
-                Select Invoice Date 選擇發票日期
+                Select Invoice Date 選擇日結單日期
               </Label>
               <Input
                 type="date"
@@ -190,7 +190,7 @@ export default function InvoiceGenerator() {
               />
               <div>
                 <CardTitle className="text-xl font-semibold">
-                  Invoice 發票 for {format(new Date(selectedDate), 'MMMM d, yyyy')}
+                  Invoice 日結單 for {format(new Date(selectedDate), 'MMMM d, yyyy')}
                 </CardTitle>
                 <p className="text-slate-300 text-sm mt-1">Summary 終結</p>
               </div>
@@ -311,7 +311,7 @@ export default function InvoiceGenerator() {
           ) : (
             <>
               <Download className="w-5 h-5 mr-2" />
-              {confirmationSignature ? 'Download Invoice PDF 下載發票PDF' : 'Sign to Download PDF 簽名以下載PDF'}
+              {confirmationSignature ? 'Download Invoice PDF 下載日結單PDF' : 'Sign to Download PDF 簽名以下載PDF'}
             </>
           )}
         </Button>

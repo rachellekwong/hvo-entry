@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Fuel, Truck, Droplets, User, Check, Loader2 } from "lucide-react";
+import { Calendar, Fuel, Truck, Droplets, User, UserCircle, Check, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { googleSheets } from "@/api/googleSheetsClient";
 import { toast } from "sonner";
@@ -31,6 +31,7 @@ export default function SurveyForm() {
   const [formData, setFormData] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
     type: 'HVO',
+    clientName: '',
     vehicle: '',
     quantity: '',
     receivedBy: '',
@@ -53,6 +54,7 @@ export default function SurveyForm() {
       await googleSheets.appendSurvey({
         date: formData.date,
         type: formData.type,
+        clientName: formData.clientName,
         vehicle: formData.vehicle,
         quantity: parseFloat(formData.quantity),
         receivedBy: formData.receivedBy,
@@ -71,6 +73,7 @@ export default function SurveyForm() {
     setFormData({
       date: format(new Date(), 'yyyy-MM-dd'),
       type: 'HVO',
+      clientName: '',
       vehicle: '',
       quantity: '',
       receivedBy: '',
@@ -90,7 +93,7 @@ export default function SurveyForm() {
               <Fuel className="w-6 h-6" />
             </div>
             <div>
-              <CardTitle className="text-xl font-semibold">Fuel Entry 燃料輸入</CardTitle>
+              <CardTitle className="text-xl font-semibold">Fuel Entry 入油紀錄</CardTitle>
               <p className="text-slate-300 text-sm mt-1">Record vehicle fuel data 記錄車輛燃料數據</p>
             </div>
           </div>
@@ -108,6 +111,21 @@ export default function SurveyForm() {
                 type="date"
                 value={formData.date}
                 onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                className="h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
+              />
+            </div>
+
+            {/* Client Name Field */}
+            <div className="space-y-2">
+              <Label className="text-slate-700 font-medium flex items-center gap-2">
+                <UserCircle className="w-4 h-4 text-slate-400" />
+                Client Name 客户
+              </Label>
+              <Input
+                type="text"
+                value={formData.clientName}
+                onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
+                placeholder="Enter client name"
                 className="h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
               />
             </div>
