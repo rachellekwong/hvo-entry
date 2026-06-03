@@ -76,15 +76,6 @@ export default function InvoiceGenerator() {
     enabled: !!selectedDate
   });
 
-  const availableClients = useMemo(() => {
-    const list = Array.isArray(surveys) ? surveys : [];
-    const fromData = [...new Set(list.map(getClientKey))];
-    const known = CLIENTS.filter((c) => fromData.includes(c));
-    const legacy = fromData.filter((c) => c !== UNASSIGNED_CLIENT && !CLIENTS.includes(c));
-    const unassigned = fromData.includes(UNASSIGNED_CLIENT) ? [UNASSIGNED_CLIENT] : [];
-    return [...known, ...legacy, ...unassigned];
-  }, [surveys]);
-
   const filteredSurveys = useMemo(() => {
     if (!selectedClient) return [];
     const list = Array.isArray(surveys) ? surveys : [];
@@ -92,14 +83,10 @@ export default function InvoiceGenerator() {
   }, [surveys, selectedClient]);
 
   useEffect(() => {
-    if (availableClients.length === 0) {
-      setSelectedClient('');
-      return;
+    if (!selectedClient || !CLIENTS.includes(selectedClient)) {
+      setSelectedClient(CLIENTS[0] ?? '');
     }
-    if (!selectedClient || !availableClients.includes(selectedClient)) {
-      setSelectedClient(availableClients[0]);
-    }
-  }, [availableClients, selectedDate]);
+  }, [selectedDate]);
 
   useEffect(() => {
     setConfirmationSignature(null);
@@ -245,21 +232,17 @@ export default function InvoiceGenerator() {
               <Select
                 value={selectedClient || undefined}
                 onValueChange={setSelectedClient}
-                disabled={isLoading || availableClients.length === 0}
+                disabled={isLoading}
               >
                 <SelectTrigger className="h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20">
                   <SelectValue
                     placeholder={
-                      isLoading
-                        ? 'Loading... 載入中...'
-                        : availableClients.length === 0
-                          ? 'No clients for this date 此日期沒有客户'
-                          : 'Select client 選擇客户'
+                      isLoading ? 'Loading... 載入中...' : 'Select client 選擇客户'
                     }
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableClients.map((client) => (
+                  {CLIENTS.map((client) => (
                     <SelectItem key={client} value={client}>
                       {client}
                     </SelectItem>
@@ -315,7 +298,11 @@ export default function InvoiceGenerator() {
             ) : !selectedClient || filteredSurveys.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-slate-500">
                 <UserCircle className="w-12 h-12 text-slate-300 mb-4" />
-                <p className="font-medium">Select a client to view the invoice 選擇客户以查看日結單</p>
+                <p className="font-medium">
+                  {selectedClient
+                    ? `No entries for ${selectedClient} on this date 此日期沒有 ${selectedClient} 的記錄`
+                    : 'Select a client to view the invoice 選擇客户以查看日結單'}
+                </p>
               </div>
             ) : (
               <div className="space-y-6">
