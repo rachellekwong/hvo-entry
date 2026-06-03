@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Fuel, Truck, Droplets, User, UserCircle, Check, Loader2 } from "lucide-react";
 import { format } from "date-fns";
@@ -123,25 +122,21 @@ export default function SurveyForm() {
                 <UserCircle className="w-4 h-4 text-slate-400" />
                 Client Name 客户
               </Label>
-              <ToggleGroup
-                type="single"
+              <Select
                 value={formData.clientName || undefined}
-                onValueChange={(value) => {
-                  if (value) setFormData({ ...formData, clientName: value });
-                }}
-                className="flex flex-wrap justify-start gap-2 w-full"
+                onValueChange={(value) => setFormData({ ...formData, clientName: value })}
               >
-                {CLIENTS.map((client) => (
-                  <ToggleGroupItem
-                    key={client}
-                    value={client}
-                    variant="outline"
-                    className="h-10 px-3 border-slate-200 data-[state=on]:bg-blue-600 data-[state=on]:text-white data-[state=on]:border-blue-600"
-                  >
-                    {client}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
+                <SelectTrigger className="h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20">
+                  <SelectValue placeholder="Select client 選擇客户" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CLIENTS.map((client) => (
+                    <SelectItem key={client} value={client}>
+                      {client}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Type Field - Read Only */}
