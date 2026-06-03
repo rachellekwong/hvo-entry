@@ -38,7 +38,23 @@ const VEHICLES = [
 
 const UNASSIGNED_CLIENT = '(Unassigned)';
 
-const getClientKey = (survey) => (survey.clientName || '').trim() || UNASSIGNED_CLIENT;
+const normalizeSurveys = (result) => {
+  const raw = Array.isArray(result) ? result : result?.surveys;
+  return Array.isArray(raw) ? raw : [];
+};
+
+const getClientKey = (survey) => {
+  const name = survey?.clientName;
+  const str = name == null || name === '' ? '' : String(name).trim();
+  return str || UNASSIGNED_CLIENT;
+};
+
+const parseQuantity = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const formatQuantity = (value) => parseQuantity(value).toFixed(2);
 
 export default function InvoiceGenerator() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -54,13 +70,14 @@ export default function InvoiceGenerator() {
     queryKey: ['surveys', selectedDate],
     queryFn: async () => {
       const result = await googleSheets.listSurveysByDate(selectedDate);
-      return Array.isArray(result) ? result : (result.surveys || []);
+      return normalizeSurveys(result);
     },
     enabled: !!selectedDate
   });
 
   const availableClients = useMemo(() => {
-    const keys = [...new Set(surveys.map(getClientKey))];
+    const list = Array.isArray(surveys) ? surveys : [];
+    const keys = [...new Set(list.map(getClientKey))];
     return keys.sort((a, b) => {
       if (a === UNASSIGNED_CLIENT) return 1;
       if (b === UNASSIGNED_CLIENT) return -1;
@@ -70,7 +87,8 @@ export default function InvoiceGenerator() {
 
   const filteredSurveys = useMemo(() => {
     if (!selectedClient) return [];
-    return surveys.filter((s) => getClientKey(s) === selectedClient);
+    const list = Array.isArray(surveys) ? surveys : [];
+    return list.filter((s) => s && getClientKey(s) === selectedClient);
   }, [surveys, selectedClient]);
 
   useEffect(() => {
@@ -107,7 +125,10 @@ export default function InvoiceGenerator() {
     onError: () => toast.error('Failed to delete entry. Please try again.'),
   });
 
-  const totalQuantity = filteredSurveys.reduce((sum, s) => sum + (s.quantity || 0), 0);
+  const totalQuantity = filteredSurveys.reduce(
+    (sum, s) => sum + parseQuantity(s.quantity),
+    0
+  );
 
   const handleEditSave = () => {
     if (!editSurvey) return;
@@ -324,7 +345,7 @@ export default function InvoiceGenerator() {
                             {getClientKey(survey)}
                           </TableCell>
                           <TableCell className="font-medium text-slate-900">{survey.vehicle}</TableCell>
-                          <TableCell className="text-right font-mono">{survey.quantity?.toFixed(2)}</TableCell>
+                          <TableCell className="text-right font-mono">{formatQuantity(survey.quantity)}</TableCell>
                           {!isExporting && (
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-1">
@@ -337,7 +358,7 @@ export default function InvoiceGenerator() {
                                     id: survey.rowIndex ?? survey.id ?? idx,
                                     vehicle: survey.vehicle,
                                     type: survey.type || 'HVO',
-                                    clientName: (survey.clientName || '').trim(),
+                                    clientName: getClientKey(survey) === UNASSIGNED_CLIENT ? '' : String(survey.clientName ?? '').trim(),
                                     quantity: String(survey.quantity ?? ''),
                                   })}
                                   disabled={updateMutation.isPending}
