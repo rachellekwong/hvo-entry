@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, FileText, Download, Loader2, AlertCircle, Pencil, Trash2 } from "lucide-react";
+import { Calendar, FileText, Download, Loader2, AlertCircle, Pencil, Trash2, UserCircle } from "lucide-react";
 import { format } from "date-fns";
 import { googleSheets } from "@/api/googleSheetsClient";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -36,8 +36,13 @@ const VEHICLES = [
   "VAN-111", "VAN-139", "STB-18", "STB-23", "STB-25", "STB-28",
 ];
 
+const UNASSIGNED_CLIENT = '(Unassigned)';
+
+const getClientKey = (survey) => (survey.clientName || '').trim() || UNASSIGNED_CLIENT;
+
 export default function InvoiceGenerator() {
   const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [selectedClient, setSelectedClient] = useState('');
   const [confirmationSignature, setConfirmationSignature] = useState(null);
   const [isExporting, setIsExporting] = useState(false);
   const [editSurvey, setEditSurvey] = useState(null);
@@ -53,6 +58,34 @@ export default function InvoiceGenerator() {
     },
     enabled: !!selectedDate
   });
+
+  const availableClients = useMemo(() => {
+    const keys = [...new Set(surveys.map(getClientKey))];
+    return keys.sort((a, b) => {
+      if (a === UNASSIGNED_CLIENT) return 1;
+      if (b === UNASSIGNED_CLIENT) return -1;
+      return a.localeCompare(b);
+    });
+  }, [surveys]);
+
+  const filteredSurveys = useMemo(() => {
+    if (!selectedClient) return [];
+    return surveys.filter((s) => getClientKey(s) === selectedClient);
+  }, [surveys, selectedClient]);
+
+  useEffect(() => {
+    if (availableClients.length === 0) {
+      setSelectedClient('');
+      return;
+    }
+    if (!selectedClient || !availableClients.includes(selectedClient)) {
+      setSelectedClient(availableClients[0]);
+    }
+  }, [availableClients, selectedDate]);
+
+  useEffect(() => {
+    setConfirmationSignature(null);
+  }, [selectedDate, selectedClient]);
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }) => googleSheets.updateSurvey(id, data),
@@ -74,18 +107,23 @@ export default function InvoiceGenerator() {
     onError: () => toast.error('Failed to delete entry. Please try again.'),
   });
 
-  const totalQuantity = surveys.reduce((sum, s) => sum + (s.quantity || 0), 0);
+  const totalQuantity = filteredSurveys.reduce((sum, s) => sum + (s.quantity || 0), 0);
 
   const handleEditSave = () => {
     if (!editSurvey) return;
-    const { id, vehicle, type, quantity } = editSurvey;
-    if (!vehicle || !type || !quantity) {
+    const { id, vehicle, type, quantity, clientName } = editSurvey;
+    if (!vehicle || !type || !quantity || !(clientName || '').trim()) {
       toast.error('Please fill in all fields');
       return;
     }
     updateMutation.mutate({
       id,
-      data: { vehicle, type, quantity: parseFloat(quantity) },
+      data: {
+        vehicle,
+        type,
+        quantity: parseFloat(quantity),
+        clientName: clientName.trim(),
+      },
     });
   };
 
@@ -151,7 +189,8 @@ export default function InvoiceGenerator() {
     const pdf = new jsPDF('p', 'mm', [210, pageHeight]);
 
     pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
-    pdf.save(`Invoice_${selectedDate}.pdf`);
+    const clientSlug = (selectedClient || 'client').replace(/[^\w\u4e00-\u9fff-]+/g, '_');
+    pdf.save(`Invoice_${clientSlug}_${selectedDate}.pdf`);
 
     setIsExporting(false);
   };
@@ -170,9 +209,42 @@ export default function InvoiceGenerator() {
               <Input
                 type="date"
                 value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
+                onChange={(e) => {
+                  setSelectedDate(e.target.value);
+                  setSelectedClient('');
+                }}
                 className="h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
               />
+            </div>
+            <div className="flex-1 space-y-2">
+              <Label className="text-slate-700 font-medium flex items-center gap-2">
+                <UserCircle className="w-4 h-4 text-slate-400" />
+                Select Client 選擇客户
+              </Label>
+              <Select
+                value={selectedClient || undefined}
+                onValueChange={setSelectedClient}
+                disabled={isLoading || availableClients.length === 0}
+              >
+                <SelectTrigger className="h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20">
+                  <SelectValue
+                    placeholder={
+                      isLoading
+                        ? 'Loading... 載入中...'
+                        : availableClients.length === 0
+                          ? 'No clients for this date 此日期沒有客户'
+                          : 'Select client 選擇客户'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableClients.map((client) => (
+                    <SelectItem key={client} value={client}>
+                      {client}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>
@@ -192,7 +264,11 @@ export default function InvoiceGenerator() {
                 <CardTitle className="text-xl font-semibold">
                   Invoice 日結單 for {format(new Date(selectedDate), 'MMMM d, yyyy')}
                 </CardTitle>
-                <p className="text-slate-300 text-sm mt-1">Summary 終結</p>
+                <p className="text-slate-300 text-sm mt-1">
+                  {selectedClient
+                    ? `Client 客户: ${selectedClient} · Summary 終結`
+                    : 'Summary 終結'}
+                </p>
               </div>
             </div>
           </CardHeader>
@@ -215,6 +291,11 @@ export default function InvoiceGenerator() {
                 <p className="font-medium">No surveys recorded for this date 此日期沒有記錄的調查</p>
                 <p className="text-sm text-slate-400 mt-1">Select a different date or add new surveys 選擇其他日期或添加新調查</p>
               </div>
+            ) : !selectedClient || filteredSurveys.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+                <UserCircle className="w-12 h-12 text-slate-300 mb-4" />
+                <p className="font-medium">Select a client to view the invoice 選擇客户以查看日結單</p>
+              </div>
             ) : (
               <div className="space-y-6">
                 {/* Data Table */}
@@ -223,6 +304,7 @@ export default function InvoiceGenerator() {
                     <TableHeader>
                       <TableRow className="bg-slate-50">
                         <TableHead className="font-semibold text-slate-700">Type 類型</TableHead>
+                        <TableHead className="font-semibold text-slate-700">Client 客户</TableHead>
                         <TableHead className="font-semibold text-slate-700">Vehicle 車輛</TableHead>
                         <TableHead className="font-semibold text-slate-700 text-right">Quantity (L) 數量（升）</TableHead>
                         {!isExporting && (
@@ -231,12 +313,15 @@ export default function InvoiceGenerator() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {surveys.map((survey, idx) => (
+                      {filteredSurveys.map((survey, idx) => (
                         <TableRow key={survey.id ?? idx} className="hover:bg-slate-50/50">
                           <TableCell>
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                               {survey.type}
                             </span>
+                          </TableCell>
+                          <TableCell className="font-medium text-slate-900">
+                            {getClientKey(survey)}
                           </TableCell>
                           <TableCell className="font-medium text-slate-900">{survey.vehicle}</TableCell>
                           <TableCell className="text-right font-mono">{survey.quantity?.toFixed(2)}</TableCell>
@@ -252,6 +337,7 @@ export default function InvoiceGenerator() {
                                     id: survey.rowIndex ?? survey.id ?? idx,
                                     vehicle: survey.vehicle,
                                     type: survey.type || 'HVO',
+                                    clientName: (survey.clientName || '').trim(),
                                     quantity: String(survey.quantity ?? ''),
                                   })}
                                   disabled={updateMutation.isPending}
@@ -297,7 +383,7 @@ export default function InvoiceGenerator() {
       </div>
 
       {/* Export Button */}
-      {surveys.length > 0 && (
+      {filteredSurveys.length > 0 && selectedClient && (
         <Button
           onClick={exportToPDF}
           disabled={!confirmationSignature || isExporting}
@@ -325,6 +411,16 @@ export default function InvoiceGenerator() {
           </DialogHeader>
           {editSurvey && (
             <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-client">Client 客户</Label>
+                <Input
+                  id="edit-client"
+                  type="text"
+                  value={editSurvey.clientName}
+                  onChange={(e) => setEditSurvey((s) => ({ ...s, clientName: e.target.value }))}
+                  placeholder="Enter client name"
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-vehicle">Vehicle 車輛</Label>
                 <Select
