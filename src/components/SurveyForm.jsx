@@ -3,12 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Fuel, Truck, Droplets, User, UserCircle, Check, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { googleSheets } from "@/api/googleSheetsClient";
 import { toast } from "sonner";
 import SignaturePad from "./SignaturePad";
+import { CLIENTS } from "@/constants/clients";
 
 const VEHICLES = [
   "CCB-06",
@@ -43,7 +45,7 @@ export default function SurveyForm() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.vehicle || !formData.quantity || !formData.receivedBy || !formData.signature) {
+    if (!formData.clientName || !formData.vehicle || !formData.quantity || !formData.receivedBy || !formData.signature) {
       toast.error('Please fill in all fields and provide a signature');
       return;
     }
@@ -121,13 +123,25 @@ export default function SurveyForm() {
                 <UserCircle className="w-4 h-4 text-slate-400" />
                 Client Name 客户
               </Label>
-              <Input
-                type="text"
-                value={formData.clientName}
-                onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                placeholder="Enter client name"
-                className="h-12 border-slate-200 focus:border-blue-500 focus:ring-blue-500/20"
-              />
+              <ToggleGroup
+                type="single"
+                value={formData.clientName || undefined}
+                onValueChange={(value) => {
+                  if (value) setFormData({ ...formData, clientName: value });
+                }}
+                className="flex flex-wrap justify-start gap-2 w-full"
+              >
+                {CLIENTS.map((client) => (
+                  <ToggleGroupItem
+                    key={client}
+                    value={client}
+                    variant="outline"
+                    className="h-10 px-3 border-slate-200 data-[state=on]:bg-blue-600 data-[state=on]:text-white data-[state=on]:border-blue-600"
+                  >
+                    {client}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
             </div>
 
             {/* Type Field - Read Only */}

@@ -30,6 +30,7 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 import SignaturePad from "./SignaturePad";
 import { toast } from "sonner";
+import { CLIENTS } from "@/constants/clients";
 
 const VEHICLES = [
   "CCB-06", "CCB-07", "CCB-08", "CCB-10", "CCB-12", "CCB-13", "CCB-15", "CCB-16",
@@ -77,12 +78,11 @@ export default function InvoiceGenerator() {
 
   const availableClients = useMemo(() => {
     const list = Array.isArray(surveys) ? surveys : [];
-    const keys = [...new Set(list.map(getClientKey))];
-    return keys.sort((a, b) => {
-      if (a === UNASSIGNED_CLIENT) return 1;
-      if (b === UNASSIGNED_CLIENT) return -1;
-      return a.localeCompare(b);
-    });
+    const fromData = [...new Set(list.map(getClientKey))];
+    const known = CLIENTS.filter((c) => fromData.includes(c));
+    const legacy = fromData.filter((c) => c !== UNASSIGNED_CLIENT && !CLIENTS.includes(c));
+    const unassigned = fromData.includes(UNASSIGNED_CLIENT) ? [UNASSIGNED_CLIENT] : [];
+    return [...known, ...legacy, ...unassigned];
   }, [surveys]);
 
   const filteredSurveys = useMemo(() => {
@@ -133,7 +133,7 @@ export default function InvoiceGenerator() {
   const handleEditSave = () => {
     if (!editSurvey) return;
     const { id, vehicle, type, quantity, clientName } = editSurvey;
-    if (!vehicle || !type || !quantity || !(clientName || '').trim()) {
+    if (!vehicle || !type || !quantity || !CLIENTS.includes(clientName)) {
       toast.error('Please fill in all fields');
       return;
     }
@@ -358,7 +358,7 @@ export default function InvoiceGenerator() {
                                     id: survey.rowIndex ?? survey.id ?? idx,
                                     vehicle: survey.vehicle,
                                     type: survey.type || 'HVO',
-                                    clientName: getClientKey(survey) === UNASSIGNED_CLIENT ? '' : String(survey.clientName ?? '').trim(),
+                                    clientName: CLIENTS.includes(getClientKey(survey)) ? getClientKey(survey) : '',
                                     quantity: String(survey.quantity ?? ''),
                                   })}
                                   disabled={updateMutation.isPending}
@@ -434,13 +434,21 @@ export default function InvoiceGenerator() {
             <div className="space-y-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-client">Client 客户</Label>
-                <Input
-                  id="edit-client"
-                  type="text"
-                  value={editSurvey.clientName}
-                  onChange={(e) => setEditSurvey((s) => ({ ...s, clientName: e.target.value }))}
-                  placeholder="Enter client name"
-                />
+                <Select
+                  value={editSurvey.clientName || undefined}
+                  onValueChange={(v) => setEditSurvey((s) => ({ ...s, clientName: v }))}
+                >
+                  <SelectTrigger id="edit-client">
+                    <SelectValue placeholder="Select client 選擇客户" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CLIENTS.map((client) => (
+                      <SelectItem key={client} value={client}>
+                        {client}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-vehicle">Vehicle 車輛</Label>
