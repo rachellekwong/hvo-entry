@@ -4,6 +4,7 @@ export const CLIENTS = [
   "HKBAC",
   "CNAF",
   "WFS",
+  "Haeco",
   "CCT",
   "HAS",
   "AA",
